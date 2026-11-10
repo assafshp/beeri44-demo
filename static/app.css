@@ -57,6 +57,15 @@ td.mono{text-align:right}
 .grid>*,.proof>*{min-width:0}
 td .mono,td.mono a{white-space:nowrap}
 .card{overflow-x:auto}
+.field{display:grid;gap:4px;margin-bottom:12px}.field label{font-weight:700}
+.field input:not([type=file]),.field select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.field input:focus-visible,.field textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.opt{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:6px 0}.opt .note{flex-basis:100%;margin-inline-start:26px}
+.stepl{list-style:none;margin:0;padding:0}.stepl li{display:grid;grid-template-columns:18px 1fr auto;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);align-items:start}
+.stepl .dot{width:12px;height:12px;border-radius:50%;background:#d6dbe5;margin-top:6px}.stepl .done .dot{background:var(--ok)}
+.stepl .running .dot{background:var(--info);animation:pulse 1s infinite}.stepl .waiting .dot{background:var(--acc2)}.stepl .failed .dot{background:var(--err)}
+.card.msg{background:#ecfdf5;border-color:#a7f3d0}
+.exp{list-style:none;margin:6px 0;padding:0;font-size:13px}.exp li{padding:1px 0}
 
 /* snapshot overrides */
 .snap{background:#fef3c7;color:#92400e;font-size:13px;padding:8px 28px;text-align:center}
