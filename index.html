@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+</head>
+<body>
+<title>beeri44</title><link rel="stylesheet" href="static/app.css">
+<style>
+[hidden]{display:none!important}
+#gate{min-height:70vh;display:grid;place-items:center;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px))}
+#gate form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px;width:min(360px,100%);display:grid;gap:14px}
+#gate h1{margin:0;font-size:22px}#gate h1 b{color:var(--acc2)}#gate p{margin:0;color:var(--mut)}
+#gate input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;direction:ltr;text-align:left;background:#fff;color:var(--ink)}
+#gate input:focus-visible,#gate button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+#err{color:var(--err);min-height:1.4em;font-size:13px}
+</style>
+<div id="gate" dir="rtl" lang="he"><form id="login" autocomplete="off">
+<h1>beeri<b>44</b></h1><p>ההדגמה מוגנת בסיסמה. התוכן מוצפן ונפתח רק בדפדפן שלכם.</p>
+<label for="pw">סיסמה</label><input id="pw" type="password" required autofocus>
+<button class="btn" id="go" type="submit">כניסה</button><div id="err" role="alert"></div></form></div>
+<div id="app" dir="rtl" lang="he" hidden></div>
+<script src="static/proof.js"></script>
+<script>
+const SALT = "BPUwtzDh2VNL//vUmvBe2w==", ITER = 600000, ROUTES = new Set(["home", "jobs-150-001-customer", "jobs-150-001-engineer", "jobs-150-001-production", "jobs-220-001-customer", "jobs-220-001-engineer", "jobs-220-001-production", "jobs-310-001-customer", "jobs-310-001-engineer", "jobs-310-001-production", "portal-150-001", "portal-220-001", "portal-310-001", "run-R20261110-144134-150-001-6023", "run-R20261110-144134-150-001-d0de", "run-R20261110-144143-220-001-64d9", "run-R20261110-144148-310-001-df0f", "run-R20261110-144153-310-001-73a9", "run-R20261110-144340-150-001-4881", "run-R20261110-144401-310-001-0173", "run-R20261110-144402-220-001-bdca", "run-R20261110-144403-150-001-c8a3", "tower"]);
+const app = document.getElementById('app'), gate = document.getElementById('gate'), err = document.getElementById('err');
+let key = null, current = null, pendingScroll = null;
+const blobs = new Map();
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function derive(pw) {
+  const m = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name: 'PBKDF2', salt: b64(SALT), iterations: ITER, hash: 'SHA-256'}, m, {name: 'AES-GCM', length: 256}, true, ['decrypt']);
+}
+let bundle = null, toc = null;
+async function openBundle() {
+  const r = await fetch('static/bundle.txt');   // base64 text: the host serves text files, not raw binaries
+  if (!r.ok) throw new Error('bundle missing');
+  const buf = b64((await r.text()).trim());
+  const plain = new Uint8Array(await crypto.subtle.decrypt({name: 'AES-GCM', iv: buf.slice(0, 12)}, key, buf.slice(12)));
+  const n = new DataView(plain.buffer).getUint32(0);
+  toc = JSON.parse(new TextDecoder().decode(plain.subarray(4, 4 + n)));
+  bundle = plain.subarray(4 + n);
+}
+async function dec(path) {
+  if (!bundle) await openBundle();
+  const e = toc[path];
+  if (!e) throw new Error('missing ' + path);
+  return bundle.subarray(e[0], e[0] + e[1]);
+}
+async function fill(img) {
+  const p = img.getAttribute('data-enc');
+  img.removeAttribute('data-enc');
+  if (!blobs.has(p)) blobs.set(p, dec(p).then(b => URL.createObjectURL(new Blob([b], {type: 'image/png'}))));
+  img.src = await blobs.get(p);
+}
+new MutationObserver(() => app.querySelectorAll('img[data-enc]').forEach(fill)).observe(app, {childList: true, subtree: true});
+async function show(route) {
+  const html = new TextDecoder().decode(await dec('p/' + route));
+  app.innerHTML = html;
+  app.querySelectorAll('script').forEach(s => { const n = document.createElement('script'); n.textContent = '{' + s.textContent + '}'; s.replaceWith(n); });
+  current = route; gate.hidden = true; app.hidden = false;
+  if (pendingScroll) { document.getElementById(pendingScroll)?.scrollIntoView(); pendingScroll = null; } else window.scrollTo(0, 0);
+}
+function route() { const r = location.hash.slice(1); return ROUTES.has(r) ? r : 'home'; }
+addEventListener('hashchange', () => { if (key && route() !== current) show(route()); });
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[data-scroll]');
+  if (!a) return;
+  e.preventDefault();
+  const r = a.getAttribute('href').slice(1), id = a.getAttribute('data-scroll');
+  if (r && r !== current) { pendingScroll = id; location.hash = r; } else document.getElementById(id)?.scrollIntoView();
+});
+document.getElementById('login').addEventListener('submit', async e => {
+  e.preventDefault(); err.textContent = '';
+  const btn = document.getElementById('go'); btn.disabled = true;
+  try {
+    key = await derive(document.getElementById('pw').value);
+    await show(route());
+    try { sessionStorage.setItem('b44k', btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.exportKey('raw', key))))); } catch (x) {}
+  } catch (x) { key = null; err.textContent = 'סיסמה שגויה'; }
+  btn.disabled = false;
+});
+(async () => {
+  try {
+    const k = sessionStorage.getItem('b44k');
+    if (!k) return;
+    key = await crypto.subtle.importKey('raw', b64(k), 'AES-GCM', true, ['decrypt']);
+    await show(route());
+  } catch (x) { key = null; }
+})();
+</script>
+
+</body></html>
